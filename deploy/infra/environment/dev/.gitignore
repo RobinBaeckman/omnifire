@@ -1,0 +1,5 @@
+/.terraform*
+*.tfstate.backup
+
+// store in s3 or similar once starting to use in shared env
+terraform.tfstate

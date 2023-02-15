@@ -1,0 +1,16 @@
+logs:
+  general:
+    level: "DEBUG"
+    format: "json"
+# UNSAFE (should only be set on localdev)
+ingressRoute:
+  dashboard:
+    enabled: true
+# UNSAFE (should only be set on localdev)
+ports:
+  traefik:
+    expose: true
+# todo fix, should be automated
+service:
+  externalIPs:
+  - "192.168.2.111"

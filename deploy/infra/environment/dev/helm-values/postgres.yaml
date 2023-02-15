@@ -1,0 +1,21 @@
+primary:
+  initdb:
+    scripts:
+      init.sql: |
+        CREATE TABLE student (id integer primary key, name varchar);
+        ALTER TABLE public.student REPLICA IDENTITY FULL;
+  extendedConfiguration: |-
+    wal_level = logical
+global:
+  postgresql:
+    auth:
+      username: "postgres"
+      database: "postgres"
+      password: "secret"
+      postgresPassword: "secret"
+image:
+  debug: true
+audit:
+  clientMinMessages: "debug"
+metrics:
+  enabled: true

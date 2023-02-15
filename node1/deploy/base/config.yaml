@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node1-config
+data:
+  TZ: "Asia/Manila"
+
+...
+

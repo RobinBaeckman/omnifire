@@ -1,0 +1,5 @@
+prometheus-node-exporter:
+  hostRootFsMount:
+    enabled: false
+global:
+  scrape_interval: 15s

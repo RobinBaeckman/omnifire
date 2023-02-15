@@ -1,0 +1,57 @@
+sidecar:
+  image:
+    repository: quay.io/kiwigrid/k8s-sidecar
+    tag: 1.15.6
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    folder: /tmp/dashboards
+# use for downloadable dashboards which doesn't required modification
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/standarddashboards
+dashboards:
+  default:
+    k8-node:
+      gnetId: 12486
+      datasource: Prometheus
+    postgres:
+      gnetId: 9628
+      datasource: Prometheus
+    # todo: add monitoring for apps
+    #k8-app:
+      #gnetId: 1471
+      #datasource: Prometheus
+adminPassword: "secret"
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.monitor.svc.cluster.local
+        access: proxy
+        isDefault: true
+      - name: Postgres
+        type: postgres
+        url: postgresql.omnifire.svc.cluster.local:5432
+        database: postgres
+        user: postgres
+        secureJsonData:
+          password: 'secret'
+        jsonData:
+          sslmode: 'disable' # disable/require/verify-ca/verify-full
+          maxOpenConns: 0 # Grafana v5.4+
+          maxIdleConns: 2 # Grafana v5.4+
+          connMaxLifetime: 14400 # Grafana v5.4+
+          postgresVersion: 903 # 903=9.3, 904=9.4, 905=9.5, 906=9.6, 1000=10
+          timescaledb: false
