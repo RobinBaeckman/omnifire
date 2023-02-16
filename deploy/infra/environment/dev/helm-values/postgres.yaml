@@ -2,6 +2,8 @@ primary:
   initdb:
     scripts:
       init.sql: |
+        CREATE DATABASE api;
+        CREATE DATABASE box;
         CREATE TABLE student (id integer primary key, name varchar);
         ALTER TABLE public.student REPLICA IDENTITY FULL;
   extendedConfiguration: |-

@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 	"log"
-	"omnifire/api/storage"
+	"omnifire/box/storage"
 
 	"github.com/lib/pq"
 )
@@ -12,7 +12,7 @@ func (s *DB) CreateData(ctx context.Context, d storage.Data) (*storage.Data, err
 	// todo fix logging
 
 	const q = `
-INSERT INTO api (
+INSERT INTO box (
     body
 ) VALUES (
 	 :body

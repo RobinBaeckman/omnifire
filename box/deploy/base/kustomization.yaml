@@ -5,7 +5,7 @@ resources:
 - service.yaml
 - config.yaml
 - ingress.yaml
-- namespace.yaml
 
 commonLabels:
-  app.kubernetes.io/name: api
+  app.kubernetes.io/name: box
+

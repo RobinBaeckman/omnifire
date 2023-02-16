@@ -5,8 +5,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	hsvc "omnifire/api/service/hop"
-	"omnifire/api/storage/postgres"
+	hsvc "omnifire/box/service/hop"
+	"omnifire/box/storage/postgres"
 	"omnifire/util/logger"
 	"omnifire/util/srv"
 )

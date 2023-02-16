@@ -22,7 +22,7 @@ type DB struct {
 }
 
 func New() *DB {
-	db, err := sqlx.Connect("postgres", "user=postgres password=secret dbname=api host=postgresql sslmode=disable")
+	db, err := sqlx.Connect("postgres", "user=postgres password=secret dbname=box host=postgresql sslmode=disable")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -37,7 +37,7 @@ func (db *DB) MigrateUp() {
 	driver, err := postgres.WithInstance(db.DB.DB, &postgres.Config{})
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://storage/migration",
-		"api", driver)
+		"box", driver)
 	if err != nil {
 		log.Fatalln(err)
 	}

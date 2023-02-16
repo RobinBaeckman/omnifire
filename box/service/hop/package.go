@@ -1,0 +1,34 @@
+package hop
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"omnifire/box/storage/postgres"
+	bpb "omnifire/proto/box"
+	"omnifire/util/logger"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"google.golang.org/grpc"
+)
+
+type Server struct {
+	bpb.UnimplementedBoxServer
+	db  *postgres.DB
+	log *logger.Log
+}
+
+func RegisterServer(s grpc.ServiceRegistrar, db *postgres.DB, log *logger.Log) {
+	bpb.RegisterBoxServer(s, &Server{db: db, log: log})
+}
+
+func RegisterGateway(ctx context.Context, conn *grpc.ClientConn) *http.Server {
+	gwmux := runtime.NewServeMux()
+	if err := bpb.RegisterBoxHandler(ctx, gwmux, conn); err != nil {
+		log.Fatalln("Failed to register gateway:", err)
+	}
+	return &http.Server{
+		Addr:    ":8090",
+		Handler: gwmux,
+	}
+}

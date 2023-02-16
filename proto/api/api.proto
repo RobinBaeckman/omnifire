@@ -1,0 +1,41 @@
+syntax='proto3';
+
+package api;
+
+import "google/api/annotations.proto";
+import "box/box.proto";
+
+option go_package ='omnifire/proto/api';
+
+message Log {
+    bool enabled        = 1;
+    string host         = 2;
+	 box.Section section = 3;
+}
+
+message Error {
+    bool    enabled     = 1;
+    string     host     = 2;
+	 box.Section section = 3;
+}
+
+message HopRequest {
+    string host  = 1;
+    bool persist = 2;
+    string data  = 3;
+    Error error  = 4;
+    Log log      = 5;
+}
+
+message HopResponse{
+    string response = 1;
+}
+
+service api {
+	rpc Hop(HopRequest) returns (HopResponse) {
+		option (google.api.http) = {
+			post: "/hop"
+			body: "*"
+      };
+   }
+}
