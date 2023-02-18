@@ -1,4 +1,4 @@
 locals {
   helm_timeout="900"
-  k8_context="rancher-desktop"
+  k8_context="hades"
 }

@@ -1,0 +1,30 @@
+mode: deployment
+config:
+  exporters:
+    logging:
+      loglevel: debug
+    otlp:
+      # Doc: https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/otlpexporter
+      endpoint: tempo:4317
+      tls:
+        # Disabled TLS for this example
+        # Doc : https://github.com/open-telemetry/opentelemetry-collector/tree/main/config/configtls
+        insecure: true
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: ${MY_POD_IP}:4317
+        http:
+          endpoint: ${MY_POD_IP}:4318
+  service:
+    pipelines:
+      traces:
+        exporters:
+          - logging
+          - otlp
+        processors:
+          - memory_limiter
+          - batch
+        receivers:
+          - otlp

@@ -16,6 +16,18 @@ after all instances are running:
 notes:
 checkout deploy/infra/charts/cp-helm-charts/templates/NOTES.txt how to smoke test kafka instances.
 
+## Architecture
+tracing:
+api -|
+	  -----> open-telementry -> tempo -> grafana
+box -|
+
+logging:
+api -|
+	  -----> promtail -> loki -> grafana
+box -|
+
+
 ### TODO/Thoughts (create as issues and/or add to project manager tool)
 * do we need telegraf?
 * Do we need influxdb, what for?

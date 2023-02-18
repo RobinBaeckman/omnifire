@@ -55,3 +55,17 @@ datasources:
           connMaxLifetime: 14400 # Grafana v5.4+
           postgresVersion: 903 # 903=9.3, 904=9.4, 905=9.5, 906=9.6, 1000=10
           timescaledb: false
+      - name: Tempo
+        type: tempo
+        access: proxy
+        orgId: 1
+        url: http://tempo:3100
+        basicAuth: false
+        isDefault: false
+        version: 2
+        editable: false
+        apiVersion: 1
+        uid: tempo
+      - name: Loki
+        type: loki
+        url: http://loki-gateway

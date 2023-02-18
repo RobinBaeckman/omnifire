@@ -1,0 +1,4 @@
+config:
+  logLevel: debug
+  clients:
+  - url: http://loki-gateway/loki/api/v1/push
