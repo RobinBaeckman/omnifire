@@ -18,14 +18,14 @@ checkout deploy/infra/charts/cp-helm-charts/templates/NOTES.txt how to smoke tes
 
 ## Architecture
 tracing:
-api -|
+hopbox-1 -|
 	  -----> open-telementry -> tempo -> grafana
-box -|
+hopbox-n -|
 
 logging:
-api -|
+hopbox-1 -|
 	  -----> promtail -> loki -> grafana
-box -|
+hopbox-n -|
 
 
 ### TODO/Thoughts (create as issues and/or add to project manager tool)

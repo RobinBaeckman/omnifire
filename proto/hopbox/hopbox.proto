@@ -1,0 +1,53 @@
+syntax='proto3';
+
+package hopbox;
+
+import "google/api/annotations.proto";
+
+option go_package ='omnifire/proto/hopbox';
+
+enum Section {
+  SERVICE    = 0;
+  STORAGE    = 1;
+}
+
+message Log {
+    int32 hop         = 1;
+	 Section section = 2;
+	 string    data = 3;
+}
+
+message Error {
+    int32 hop      = 1;
+	 Section section = 2;
+}
+
+message Work {
+    int32     hop  = 1;
+	 int32 durationSec = 2;
+}
+
+message Persist {
+    int32     hop  = 1;
+	 string    data = 2;
+}
+
+message HopRequest {
+    repeated Persist persist  = 1;
+    Error error  = 2;
+    repeated Log log   = 3;
+	 Work work = 4;
+}
+
+message HopResponse{
+    string response = 1;
+}
+
+service Hopbox {
+	rpc Hop(HopRequest) returns (HopResponse) {
+		option (google.api.http) = {
+			post: "/hop"
+			body: "*"
+      };
+   }
+}

@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hopbox
+spec:
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+  - name: http
+    port: 8090
+    targetPort: 8090
+  selector:
+    app.kubernetes.io/instance: hopbox
+
+...

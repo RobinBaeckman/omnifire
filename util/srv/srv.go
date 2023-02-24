@@ -10,18 +10,18 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func Listen(network, address string) net.Listener {
-	lis, err := net.Listen("tcp", ":8080")
+func Listen(network, addr string) net.Listener {
+	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalln("Failed to listen:", err)
 	}
 	return lis
 }
 
-func GRPCClientConn(ctx context.Context) *grpc.ClientConn {
+func GRPCClientConn(ctx context.Context, addr string) *grpc.ClientConn {
 	conn, err := grpc.DialContext(
 		ctx,
-		"0.0.0.0:8080",
+		addr,
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
