@@ -5,6 +5,7 @@ $ terraform init
 $ terraform apply
 ```
 
+### Kafka
 after all instances are running:
 1. port-forward mykafka-cp-kafka-connect-* pod on port 8083
 2. install postman/Omnifire.postman_collection.json and postman/Kafka.postman_environment.json
@@ -13,18 +14,19 @@ after all instances are running:
 5. create an insert record in postgres student table
 6. port-forward mykafka-cp-control-center-* pod and visit http://localhost:9021, choose cluster, topic, message to see the message that was created from the insert
 
-notes:
-checkout deploy/infra/charts/cp-helm-charts/templates/NOTES.txt how to smoke test kafka instances.
+####notes:
+* checkout deploy/infra/charts/cp-helm-charts/templates/NOTES.txt how to smoke test kafka instances.
+* to be able to add connectors to kafka connect a new image is created from the original and connectors are copied to the new image, use `make build-kafka` to build and push the image
 
 ## Architecture
 tracing:
 hopbox-1 -|
-	  -----> open-telementry -> tempo -> grafana
+	        -----> open-telementry -> tempo -> grafana
 hopbox-n -|
 
 logging:
 hopbox-1 -|
-	  -----> promtail -> loki -> grafana
+	        -----> promtail -> loki -> grafana
 hopbox-n -|
 
 

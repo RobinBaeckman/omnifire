@@ -1,0 +1,112 @@
+kind: pipeline
+name: default
+
+trigger:
+workspace:
+  base: /root
+  path: ${DRONE_REPO_NAME}
+
+volumes:
+  - name: go-cache
+    host:
+      path: /var/lib/drone-cache/go
+
+steps:
+  - name: env-setup
+    image: golang:1.17
+    pull: if-not-exists
+    environment:
+      DOCKER_CONFIG_JSON:
+        from_secret: dockerconfigjson
+    commands:
+      # Use https cloning. SSH keys are not set up on drone
+      - git config --global url.https://gitea.brankas.dev:.insteadOf ssh://git@git.brankas.dev
+      - go env -w CGO_ENABLED=0 GOCACHE=/go-cache/buildcache GOBIN=/root/bin GOFLAGS=-mod=readonly
+
+      # checks that the commit is following brankas standards
+      - ./scripts/lint-jira-tag
+
+      # Setup the docker config that all drone docker plugins will use. (includes dockerhub pro account credentials)
+      - mkdir -p /root/.docker
+      - printf "%s" "$DOCKER_CONFIG_JSON" > /root/.docker/config.json
+
+  - name: install-tools
+    depends_on: [env-setup]
+    image: golang:1.17
+    pull: if-not-exists
+    volumes:
+      - name: go-cache
+        path: /go-cache
+    environment:
+      GOPATH: /go-cache/gopath
+    commands:
+      - export PATH=$PATH:/root/bin
+      - mkdir -p /root/bin
+      - wget -c https://get.helm.sh/helm-v3.8.0-linux-amd64.tar.gz -O - | tar -xz
+      - mv linux-amd64/helm /root/bin
+
+  - name: helm-lint
+    depends_on: [install-tools]
+    image: alpine:3.15
+    pull: if-not-exists
+    environment:
+      GOOGLE_CREDENTIALS:
+        from_secret: google_credentials
+    commands:
+      # todo: add this to a dynamic script instead
+      - export PATH=$PATH:/root/bin
+      - export HELM_EXPERIMENTAL_OCI=1
+      - echo $GOOGLE_CREDENTIALS | helm registry login -u _json_key --password-stdin https://asia-southeast1-docker.pkg.dev
+      - cd openbank/openbank-core
+      - helm dependency build
+      - cd -
+      - cd openbank/openbank-core-gw
+      - helm dependency build
+      - cd -
+      - cd openbank/openbank-core-ui
+      - helm dependency build
+      - cd -
+      - cd openbank/openbank-core-docs
+      - helm dependency build
+      - cd -
+      - helm lint openbank/openbank-core
+      - helm lint openbank/openbank-core-gw
+      - helm lint openbank/openbank-core-ui
+      - helm lint openbank/openbank-core-docs
+      - helm lint openbank/common
+
+  - name: upload-charts
+    depends_on: [helm-lint]
+    image: alpine:3.15
+    pull: if-not-exists
+    environment:
+      GOOGLE_CREDENTIALS:
+        from_secret: google_credentials
+    commands:
+      # todo: add this to a dynamic script instead
+      - export PATH=$PATH:/root/bin
+      - export HELM_EXPERIMENTAL_OCI=1
+      - echo $GOOGLE_CREDENTIALS | helm registry login -u _json_key --password-stdin https://asia-southeast1-docker.pkg.dev
+
+      - helm package openbank/openbank-core
+      - helm push openbank-core-* oci://asia-southeast1-docker.pkg.dev/openbank-core-dev/openbank-dev/charts
+      - rm openbank-core-*
+
+      - helm package openbank/openbank-core-gw
+      - helm push openbank-core-gw-* oci://asia-southeast1-docker.pkg.dev/openbank-core-dev/openbank-dev/charts
+      - rm openbank-core-gw-*
+
+      - helm package openbank/openbank-core-ui
+      - helm push openbank-core-ui-* oci://asia-southeast1-docker.pkg.dev/openbank-core-dev/openbank-dev/charts
+      - rm openbank-core-ui-*
+
+      - helm package openbank/openbank-core-docs
+      - helm push openbank-core-docs-* oci://asia-southeast1-docker.pkg.dev/openbank-core-dev/openbank-dev/charts
+      - rm openbank-core-docs-*
+
+      - helm package openbank/common
+      - helm push common-* oci://asia-southeast1-docker.pkg.dev/openbank-core-dev/openbank-dev/charts
+      - rm common-*
+    when:
+      event: push
+      branch: [master, staging-test]

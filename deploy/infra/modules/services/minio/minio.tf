@@ -7,10 +7,10 @@ resource "kubernetes_namespace" "minio" {
 
 resource "helm_release" "minio" {
   name      = "minio"
-  repository = "https://operator.min.io/"
-  chart     = "operator"
+  repository = "https://charts.min.io/"
+  chart     = "minio"
   namespace = "minio"
-  version			 = "4.5.8"
+  version			 = "5.0.7"
   depends_on = [
     kubernetes_namespace.minio,
   ]

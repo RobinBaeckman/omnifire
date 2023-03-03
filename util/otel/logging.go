@@ -10,14 +10,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type logHook struct{}
+type LogHook struct{}
 
-func (h *logHook) Levels() []logrus.Level {
+func (h *LogHook) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
 
 // Fire hook for logging tracing events
-func (h *logHook) Fire(e *logrus.Entry) error {
+func (h *LogHook) Fire(e *logrus.Entry) error {
 	s := trace.SpanFromContext(e.Context)
 	// todo: fix so trace-id and span-id are logged, something is wrong with this
 	// and they just zeroes

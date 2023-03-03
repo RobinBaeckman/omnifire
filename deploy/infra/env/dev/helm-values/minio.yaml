@@ -1,9 +1,26 @@
-#resources:
-  #requests:
-    #memory: 1024Mi
+#image:
+  #debug: true
+#auth:
+  #rootUser: "admin123"
+  #rootPassword: "secret123"
+##persistence:
+  ##enabled: false
+#extraEnv:
+  #- name: BITNAMI_DEBUG
+    #value: true
+  #- name: MINIO_SERVER_URL
+    #value: http://127.0.0.1:9000
+  #- name: MINIO_BROWSER_REDIRECT_URL
+    #value: http://127.0.0.1:9001
+  ##- name: MINIO_SERVER_URL
+    ##value: "minio:9000"
+
+resources:
+  requests:
+    memory: 512Mi
 replicas: 1
 persistence:
   enabled: false
 mode: standalone
-rootUser: admin
+rootUser: admin123
 rootPassword: secret123

@@ -3,17 +3,12 @@ cp-control-center:
     "replication.factor": "1"
 
 cp-kafka-connect:
+  image: robinbaeckman/kafka-connect
+  imageTag: 4386f24a64a3c1d5cfed
   configurationOverrides:
     "config.storage.replication.factor": "1"
     "offset.storage.replication.factor": "1"
     "status.storage.replication.factor": "1"
-  volumeMounts:
-  - name: test
-    mountPath: /usr/share/confluent-hub-components
-  volumes:
-  - name: test
-    hostPath:
-      path: /home/robin/data/kafka
 
 cp-kafka:
   brokers: 1

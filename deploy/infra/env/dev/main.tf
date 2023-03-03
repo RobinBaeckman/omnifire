@@ -1,20 +1,20 @@
-#module "ingress-controller" {
-  #source       = "../../modules/services/ingress-controller"
+#module "traefik" {
+  #source       = "../../modules/services/traefik"
 #}
 
-module "database" {
-  source       = "../../modules/services/database"
+module "postgres" {
+  source       = "../../modules/services/postgres"
   helm_timeout = local.helm_timeout
 }
 
-module "observe" {
-  source = "../../modules/services/observe"
-}
+#module "observe" {
+  #source = "../../modules/services/observe"
+#}
 
 module "minio" {
   source = "../../modules/services/minio"
 }
 
-#module "data-integration" {
-  #source = "../../modules/services/data-integration"
-#}
+module "kafka" {
+  source = "../../modules/services/kafka"
+}
