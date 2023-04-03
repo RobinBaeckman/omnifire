@@ -4,19 +4,19 @@ kind: ConfigMap
 metadata:
   name: hopbox
 data:
-  TZ: "Asia/Manila"
   RUNTIME_ENV: "dev"
-  SERVER_NAME: "hopbox-2"
+  SERVER_NAME: "hopbox2"
   SERVER_GRPCPORT: "8080"
   SERVER_HTTPPORT: "8090"
   DATABASE_USER: "postgres"
   # remove secret later
   DATABASE_PASSWORD: "secret"
-  DATABASE_DBNAME: "hopbox-2"
+  DATABASE_DBNAME: "hopbox2"
   DATABASE_HOST: "postgresql"
   DATABASE_SSLMODE: "disable"
   DATABASE_MIGRATIONPATH: "file://storage/migration"
   TRACE_COLLECTORHOST: "otel-opentelemetry-collector.observe.svc.cluster.local:4317"
   NEXTHOP_ADDR: ""
+  PROFILE_HOST: "http://pyroscope.observe.svc.cluster.local:4040"
 
 ...

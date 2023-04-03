@@ -29,7 +29,7 @@ resource "helm_release" "grafana" {
   chart            = "grafana"
   namespace		    = "observe"
   timeout          = 900
-  version			 = "6.50.7"
+  version			 = "6.50.8"
   depends_on = [
     kubernetes_namespace.observe,
   ]
@@ -99,5 +99,21 @@ resource "helm_release" "promtail" {
   ]
   values = [
     "${file("${path.cwd}/helm-values/promtail.yaml")}"
+  ]
+}
+
+resource "helm_release" "pyroscope" {
+  atomic           = true
+  repository       = "https://pyroscope-io.github.io/helm-chart"
+  name             = "pyroscope"
+  chart            = "pyroscope"
+  namespace		    = "observe"
+  timeout          = 900
+  version          = "0.2.92"
+  depends_on = [
+    kubernetes_namespace.observe,
+  ]
+  values = [
+    "${file("${path.cwd}/helm-values/pyroscope.yaml")}"
   ]
 }

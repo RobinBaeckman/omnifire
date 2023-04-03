@@ -17,6 +17,6 @@ data:
   DATABASE_SSLMODE: "disable"
   DATABASE_MIGRATIONPATH: "file://storage/migration"
   TRACE_COLLECTORHOST: "otel-opentelemetry-collector.observe.svc.cluster.local:4317"
-  NEXTBOX_ADDR: "hopbox-2:8080"
+  NEXTBOX_ADDR: "hopbox2:8080"
 
 ...

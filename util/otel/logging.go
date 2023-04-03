@@ -19,12 +19,9 @@ func (h *LogHook) Levels() []logrus.Level {
 // Fire hook for logging tracing events
 func (h *LogHook) Fire(e *logrus.Entry) error {
 	s := trace.SpanFromContext(e.Context)
-	// todo: fix so trace-id and span-id are logged, something is wrong with this
-	// and they just zeroes
-	tid := s.SpanContext().TraceID()
-	sid := s.SpanContext().SpanID()
-	e.Data["traceID"] = tid
-	e.Data["spanID"] = sid
+	e.Data["traceID"] = s.SpanContext().TraceID()
+	e.Data["spanID"] = s.SpanContext().SpanID()
+	e.Data["profileID"] = s.SpanContext().SpanID()
 	as := []attribute.KeyValue{}
 	if e.HasCaller() {
 		as = []attribute.KeyValue{

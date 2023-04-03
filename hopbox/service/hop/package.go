@@ -46,7 +46,6 @@ func RegisterServer(s grpc.ServiceRegistrar, db *postgres.DB, cl hpb.HopboxClien
 
 func RegisterGateway(ctx context.Context, conn *grpc.ClientConn, addr string) *http.Server {
 	log := logger.FromContext(ctx)
-
 	gwmux := runtime.NewServeMux()
 	if err := hpb.RegisterHopboxHandler(ctx, gwmux, conn); err != nil {
 		log.Fatalln("failed to register gateway:", err)

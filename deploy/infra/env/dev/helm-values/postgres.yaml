@@ -2,8 +2,8 @@ primary:
   initdb:
     scripts:
       init.sql: |
-        CREATE DATABASE hopbox-1;
-        CREATE DATABASE hopbox-2;
+        CREATE DATABASE hopbox1;
+        CREATE DATABASE hopbox2;
         CREATE TABLE student (id integer primary key, name varchar);
         ALTER TABLE public.student REPLICA IDENTITY FULL;
   extendedConfiguration: |-

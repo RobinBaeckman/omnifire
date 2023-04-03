@@ -1,0 +1,2 @@
+CREATE DATABASE hopbox1;
+CREATE DATABASE hopbox2;

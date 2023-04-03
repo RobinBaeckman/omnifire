@@ -1,0 +1,216 @@
+version: '3'
+
+volumes:
+  omnifire-postgresql:
+  grafana-data:
+  prometheus-data:
+
+services:
+  postgres:
+    container_name: omnifire-postgresd
+    image: postgres:13-alpine
+    labels:
+      logging: "promtail"
+    ports:
+      - 5432:5432
+    volumes:
+      - omnifire-postgresql:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=postgres
+      - CREATE_EXTENSION=uuid-ossp
+    restart: unless-stopped
+
+  hopbox1:
+    container_name: hopbox1
+    depends_on:
+      - postgres
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.hopbox
+    labels:
+      logging: "promtail"
+    ports:
+      - 9000:8080
+      - 9010:8090
+    environment:
+      RUNTIME_ENV: "dev"
+      SERVER_NAME: "hopbox1"
+      SERVER_GRPCPORT: "8080"
+      SERVER_HTTPPORT: "8090"
+      DATABASE_USER: "postgres"
+      DATABASE_PASSWORD: "secret"
+      DATABASE_DBNAME: "hopbox1"
+      DATABASE_HOST: "postgres"
+      DATABASE_SSLMODE: "disable"
+      DATABASE_MIGRATIONPATH: "file://storage/migration"
+      LOCAL_CONTAINERNAME: "hopbox1"
+      TRACE_COLLECTORHOST: "otel-col:4317"
+      NEXTHOP_ADDR: "hopbox2:8080"
+      PROFILE_HOST: "http://pyroscope:4040"
+    restart: unless-stopped
+
+  hopbox2:
+    container_name: hopbox2
+    depends_on:
+      - postgres
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.hopbox
+    labels:
+      logging: "promtail"
+    ports:
+      - 9020:8080
+      - 9030:8090
+    environment:
+      RUNTIME_ENV: "dev"
+      SERVER_NAME: "hopbox2"
+      SERVER_GRPCPORT: "8080"
+      SERVER_HTTPPORT: "8090"
+      DATABASE_USER: "postgres"
+      DATABASE_PASSWORD: "secret"
+      DATABASE_DBNAME: "hopbox2"
+      DATABASE_HOST: "postgres"
+      DATABASE_SSLMODE: "disable"
+      DATABASE_MIGRATIONPATH: "file://storage/migration"
+      LOCAL_CONTAINERNAME: "hopbox1"
+      TRACE_COLLECTORHOST: "otel-col:4317"
+      NEXTHOP_ADDR: ""
+      PROFILE_HOST: "http://pyroscope:4040"
+    restart: unless-stopped
+
+# -- Monitoring --#
+  grafana:
+    image: grafana/grafana:9.4.3
+    container_name: grafana
+    labels:
+      logging: "promtail"
+    ports:
+      - 4000:3000
+    restart: unless-stopped
+    volumes:
+      - ./service/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./service/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./service/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    profiles:
+      - observe
+
+  prometheus:
+    container_name: prometheus
+    hostname: prometheus
+    image: prom/prometheus:v2.37.6
+    labels:
+      logging: "promtail"
+    volumes:
+      - ./service/prometheus/config.yaml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - 9090:9090
+    links:
+      - cadvisor:cadvisor
+      - node-exporter:node-exporter
+    profiles:
+      - observe
+
+  node-exporter:
+    image: prom/node-exporter:v1.5.0
+    container_name: node-exporter
+    restart: unless-stopped
+    labels:
+      logging: "promtail"
+    expose:
+      - 9100
+    profiles:
+      - observe
+
+  cadvisor:
+    image: 'gcr.io/cadvisor/cadvisor:v0.47.0'
+    container_name: cadvisor
+    privileged: true
+    labels:
+      logging: "promtail"
+    volumes:
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk:/dev/disk/:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    ports:
+    - '8080:8080'
+    profiles:
+      - observe
+
+  loki:
+    image: grafana/loki:2.7.4
+    container_name: loki
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+      - -table-manager.retention-period=1d
+      - -table-manager.retention-deletes-enabled=true
+    labels:
+      logging: "promtail"
+    ports:
+      - "3100:3100"
+    profiles:
+      - observe
+
+  promtail:
+    image: grafana/promtail:2.7.4
+    container_name: promtail
+    volumes:
+      - /var/log:/var/log
+    command: -config.file=/etc/promtail/docker-config.yaml
+    volumes:
+      - ./service/promtail/config.yaml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    profiles:
+      - observe
+
+  tempo:
+    image: grafana/tempo:2.0.1
+    container_name: tempo
+    command:
+      - --target=all
+      - --storage.trace.backend=local
+      - --storage.trace.local.path=/var/tempo
+      - --auth.enabled=false
+      - --compactor.compaction.block-retention=24h
+    labels:
+      logging: "promtail"
+    ports:
+      - "8004:80"
+    profiles:
+      - observe
+
+  otelcol:
+    image: otel/opentelemetry-collector:0.72.0
+    container_name: otel-col
+    command: [ "--config=/etc/otelcol-config.yaml" ]
+    labels:
+      logging: "promtail"
+    volumes:
+      - ./service/otel/config.yaml:/etc/otelcol-config.yaml
+    ports:
+      - "4317"          # OTLP over gRPC receiver
+      - "4318:4318"     # OTLP over HTTP receiver
+      - "9464"          # Prometheus exporter
+      - "8888"          # metrics endpoint
+    profiles:
+      - observe
+
+  pyroscope:
+    image: "pyroscope/pyroscope:0.37.2"
+    ports:
+      - "4040:4040"
+    command:
+      - "server"
+    profiles:
+      - observe
+# ------------------#

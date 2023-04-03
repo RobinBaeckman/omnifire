@@ -19,6 +19,13 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/instance: hopbox
+      annotations:
+        profiles.grafana.com/memory.scrape: "true"
+        profiles.grafana.com/memory.port: "6060"
+        profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/cpu.port: "6060"
+        profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/goroutine.port: "6060"
     spec:
       containers:
       - name: hopbox
@@ -26,6 +33,14 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8090
+          name: http
+          protocol: TCP
+        - containerPort: 8080
+          name: grpc
+          protocol: TCP
+        - containerPort: 6060
+          name: prof
+          protocol: TCP
         envFrom:
         - configMapRef:
             name: hopbox

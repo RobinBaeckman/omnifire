@@ -18,20 +18,49 @@ import (
 
 	vpr "github.com/spf13/viper"
 
+	"github.com/pyroscope-io/client/pyroscope"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.9.0"
+)
+
+const (
+	dockerEnv = "dev"
 )
 
 func main() {
 	cf := viper.New()
 	log, ctx := logger.New(context.Background(), cf)
 
-	shutdown := otel.NewProvider(
-		ctx,
-		cf.GetString("trace.collectorHost"),
+	pf, err := pyroscope.Start(pyroscope.Config{
+		ApplicationName: cf.GetString("server.name"),
+		ServerAddress:   cf.GetString("profile.host"),
+		Logger:          pyroscope.StandardLogger,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := pf.Stop(); err != nil {
+			log.Error(err)
+		}
+	}()
+
+	attr := []attribute.KeyValue{
 		semconv.ServiceNameKey.String(cf.GetString("server.name")),
 		semconv.DeploymentEnvironmentKey.String(cf.GetString("runtime.env")),
 		semconv.ServiceVersionKey.String("todo"),
+		attribute.String("app", cf.GetString("server.name")),
+	}
+	if cf.GetString("runtime.env") == dockerEnv {
+		attr = append(attr, attribute.String("container", cf.GetString("server.name")))
+	}
+	shutdown := otel.NewTracerWithProfiler(
+		ctx,
+		cf.GetString("server.name"),
+		cf.GetString("trace.collectorHost"),
+		cf.GetString("profile.host"),
+		attr...,
 	)
 	defer shutdown()
 
@@ -41,8 +70,6 @@ func main() {
 
 	s := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			// todo see how to integrate how extraction of log can be done internally
-			//grpc_logrus.UnaryServerInterceptor(log),
 			otelgrpc.UnaryServerInterceptor(),
 			mw.LoggerInterceptor(cf, log),
 		),
@@ -65,7 +92,6 @@ func main() {
 		),
 		":"+cf.GetString("server.httpPort"),
 	)
-
 	log.Infoln("serving gRPC-Gateway on http://0.0.0.0:" + cf.GetString("server.httpPort"))
 	log.Fatalln(gwServer.ListenAndServe())
 }

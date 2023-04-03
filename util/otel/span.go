@@ -41,9 +41,6 @@ func Start(ctx context.Context, name string, opts ...Option) (*logrus.Entry, tra
 		opt(c)
 	}
 
-	// todo: leaving tracename as empty by default for now, it will be set to its default
-	// we might want to set this to package name or something, not really sure
-	// what the usecase is for this yet
 	var t trace.Tracer
 	if c.tracerName != "" {
 		t = otel.Tracer(c.tracerName)
@@ -57,18 +54,12 @@ func Start(ctx context.Context, name string, opts ...Option) (*logrus.Entry, tra
 	} else {
 		pc, _, _, ok := runtime.Caller(1)
 		details := runtime.FuncForPC(pc)
-		// todo: might be a better way of setting the span name to the function name
-		// maybe we just want the function name without the full path
 		if ok && details != nil {
 			ctx, s = t.Start(ctx, details.Name(), c.spanOpts...)
 		} else {
 			ctx, s = t.Start(ctx, "error", c.spanOpts...)
 		}
 	}
-	log := logger.FromContext(ctx)
-	log = log.WithField("span", c.spanName)
-	if s.IsRecording() {
-		log = log.WithField("traceid", s.SpanContext().TraceID())
-	}
+	log := logger.FromContext(ctx).WithContext(ctx)
 	return log, s, ctx
 }

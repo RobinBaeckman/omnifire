@@ -20,14 +20,14 @@ after all instances are running:
 
 ## Architecture
 tracing:
-hopbox-1 -|
+hopbox1 -|
 	        -----> open-telementry -> tempo -> grafana
-hopbox-n -|
+hopboxn -|
 
 logging:
-hopbox-1 -|
+hopbox1 -|
 	        -----> promtail -> loki -> grafana
-hopbox-n -|
+hopboxn -|
 
 
 ### TODO/Thoughts (create as issues and/or add to project manager tool)

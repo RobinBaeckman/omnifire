@@ -7,14 +7,14 @@ module "postgres" {
   helm_timeout = local.helm_timeout
 }
 
-#module "observe" {
-  #source = "../../modules/services/observe"
+module "observe" {
+  source = "../../modules/services/observe"
+}
+
+#module "minio" {
+  #source = "../../modules/services/minio"
 #}
 
-module "minio" {
-  source = "../../modules/services/minio"
-}
-
-module "kafka" {
-  source = "../../modules/services/kafka"
-}
+#module "kafka" {
+  #source = "../../modules/services/kafka"
+#}

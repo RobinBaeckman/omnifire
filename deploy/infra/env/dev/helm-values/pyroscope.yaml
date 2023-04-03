@@ -1,0 +1,3 @@
+pyroscopeConfigs:
+  log-level: "debug"
+  badger-log-level: "debug"

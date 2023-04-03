@@ -6,13 +6,13 @@ resources:
 patchesStrategicMerge:
 - config.yaml
 
-nameSuffix: "-2"
+nameSuffix: "2"
 
 images:
 - name: robinbaeckman/hopbox
   newName: robinbaeckman/hopbox
-  newTag: b98c052b31f59052a95f
+  newTag: 6fd4347041480814c96f
 
 commonLabels:
-  app.kubernetes.io/instance: hopbox-2
-  app.kubernetes.io/name: hopbox-2
+  app.kubernetes.io/instance: hopbox2
+  app.kubernetes.io/name: hopbox2

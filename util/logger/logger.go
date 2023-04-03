@@ -24,7 +24,7 @@ func SetDefaultFields(cf *viper.Viper, e *logrus.Entry) *logrus.Entry {
 	e.Logger.SetReportCaller(true)
 
 	e = e.
-		WithField("service", cf.GetString("server.name")).
+		WithField("app", cf.GetString("server.name")).
 		WithField("version", "todo")
 	return e
 }

@@ -1,3 +1,6 @@
+plugins:
+- pyroscope-datasource
+- pyroscope-panel
 sidecar:
   image:
     repository: quay.io/kiwigrid/k8s-sidecar
@@ -36,6 +39,7 @@ datasources:
     apiVersion: 1
     datasources:
       - name: Prometheus
+        uid: prometheus
         type: prometheus
         url: http://prometheus-server.observe.svc.cluster.local
         access: proxy
@@ -55,27 +59,55 @@ datasources:
           postgresVersion: 903 # 903=9.3, 904=9.4, 905=9.5, 906=9.6, 1000=10
           timescaledb: false
       - name: Tempo
+        uid: tempo
         type: tempo
-        access: proxy
-        orgId: 1
         url: http://tempo:3100
+        access: proxy
+        editable: true
         basicAuth: false
         isDefault: false
         version: 2
-        editable: false
-        apiVersion: 1
-        uid: tempo
+        jsonData:
+          httpMethod: GET
+          tracesToLogs:
+            datasourceUid: 'loki'
+            tags: ['job', 'instance', 'pod', 'namespace', 'app']
+            mapTagNamesEnabled: false
+            spanEndTimeShift: '1h'
+            filterByTraceID: false
+            filterBySpanID: true
+          serviceMap:
+            datasourceUid: 'prometheus'
+          search:
+            hide: false
+          nodeGraph:
+            enabled: true
+          lokiSearch:
+            datasourceUid: 'loki'
       - name: Loki
+        uid: loki
         type: loki
+        access: proxy
         url: http://loki-gateway
+        basicAuth: false
+        editable: true
         jsonData:
           maxLines: 1000
           derivedFields:
-          # Field with internal link pointing to data source in Grafana.
-          # Right now, Grafana supports only Jaeger and Zipkin data sources as link targets.
-          # datasourceUid value can be anything, but it should be unique across all defined data source uids.
-          - datasourceUid: Tempo
-            matcherRegex: '"traceID":"(\w+)'
-            name: TraceID
-            # url will be interpreted as query for the datasource
-            url: '$${__value.raw}'
+            - name: TraceID
+              datasourceUid: tempo
+              matcherRegex: '"traceID":"(\w+)'
+              url: '$${__value.raw}'
+            - name: 'profileID'
+              datasourceUid: pyroscope
+              #matcherRegex: "go_span_id=(\\w+)"
+              matcherRegex: '"profileID":"(\w+)'
+              #url: 'ride-sharing-app.cpu{profileID="$${__value.raw}"}'
+              url: '$${__value.raw}'
+      - name: Pyroscope
+        uid: pyroscope
+k       type: pyroscope-datasource
+        access: proxy
+        orgId: 1
+        jsonData:
+          path: http://pyroscope:4040
