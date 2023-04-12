@@ -4,12 +4,9 @@ import (
 	"context"
 	"runtime"
 
-	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-
-	"omnifire/util/logger"
 )
 
 type Attr = attribute.Key
@@ -35,18 +32,13 @@ func WithSpanOpts(opts ...trace.SpanStartOption) Option {
 }
 
 // Start a span which is used to trace a function
-func Start(ctx context.Context, name string, opts ...Option) (*logrus.Entry, trace.Span, context.Context) {
+func Start(ctx context.Context, name string, opts ...Option) (context.Context, trace.Span) {
 	c := &config{spanName: name, spanOpts: []trace.SpanStartOption{}}
 	for _, opt := range opts {
 		opt(c)
 	}
 
-	var t trace.Tracer
-	if c.tracerName != "" {
-		t = otel.Tracer(c.tracerName)
-	} else {
-		t = otel.Tracer("")
-	}
+	t := otel.Tracer(c.tracerName)
 
 	var s trace.Span
 	if c.spanName != "" {
@@ -60,6 +52,5 @@ func Start(ctx context.Context, name string, opts ...Option) (*logrus.Entry, tra
 			ctx, s = t.Start(ctx, "error", c.spanOpts...)
 		}
 	}
-	log := logger.FromContext(ctx).WithContext(ctx)
-	return log, s, ctx
+	return ctx, s
 }

@@ -31,11 +31,12 @@ const (
 func main() {
 	cf := viper.New()
 	log, ctx := logger.New(context.Background(), cf)
+	log.Logger.AddHook(&otel.LogHook{})
 
 	pf, err := pyroscope.Start(pyroscope.Config{
 		ApplicationName: cf.GetString("server.name"),
 		ServerAddress:   cf.GetString("profile.host"),
-		Logger:          pyroscope.StandardLogger,
+		//Logger:          pyroscope.StandardLogger,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -55,7 +56,7 @@ func main() {
 	if cf.GetString("runtime.env") == dockerEnv {
 		attr = append(attr, attribute.String("container", cf.GetString("server.name")))
 	}
-	shutdown := otel.NewTracerWithProfiler(
+	shutdown := otel.NewTracer(
 		ctx,
 		cf.GetString("server.name"),
 		cf.GetString("trace.collectorHost"),

@@ -19,16 +19,19 @@ import (
 
 // Initializes an OTLP exporter, and configures the corresponding trace providers.
 // usually used in main function
-func NewTracer(ctx context.Context, ep string, svcAttr ...attribute.KeyValue) func() {
+func NewTracer(ctx context.Context, svcName string, otelHost string, pyroHost string, svcAttr ...attribute.KeyValue) func() {
 	log := logger.FromContext(ctx)
-	if ep == "" {
+	switch {
+	case otelHost == "":
 		log.Debug("tracing disabled")
 		return func() {}
+	case pyroHost == "":
+		log.Debug("profiling disabled")
 	}
-	log.Info(fmt.Sprintf("dialing otel-collector, %s..", ep))
+	log.Info(fmt.Sprintf("dialing otel-collector, %s..", otelHost))
 	exp, err := otelpgrpc.New(ctx,
 		otelpgrpc.WithInsecure(),
-		otelpgrpc.WithEndpoint(ep),
+		otelpgrpc.WithEndpoint(otelHost),
 		//otlpgrpc.WithDialOption(grpc.WithBlock()),
 	)
 	if err != nil {
@@ -50,74 +53,32 @@ func NewTracer(ctx context.Context, ep string, svcAttr ...attribute.KeyValue) fu
 	// set global propagator to tracecontext (the default is no-op).
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	otel.SetTracerProvider(tp)
+	if pyroHost == "" {
+		otel.SetTracerProvider(tp)
+		fmt.Println("################6")
+	} else {
+		fmt.Println("################5")
+		otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp,
+			otelpyroscope.WithAppName(svcName),
+			otelpyroscope.WithPyroscopeURL(pyroHost),
+			otelpyroscope.WithRootSpanOnly(true),
+			otelpyroscope.WithAddSpanName(true),
+			otelpyroscope.WithProfileURL(true),
+			otelpyroscope.WithProfileBaselineURL(true),
+			//otelpyroscope.WithProfileBaselineLabels(map[string]string{"robin": "rovin"}),
+		))
+	}
 
 	log.Info("tracing running")
 
 	return func() {
 		tp.Shutdown(ctx)
 		if err != nil {
-			log.Fatalln("stopping provider")
+			log.Error("stopping provider")
 		}
 		exp.Shutdown(ctx)
 		if err != nil {
-			log.Fatalln("stopping exporter")
-		}
-	}
-}
-
-// Initializes an OTLP exporter, and configures the corresponding trace providers.
-// usually used in main function
-func NewTracerWithProfiler(ctx context.Context, srvName string, otelEp string, profEp string, svcAttr ...attribute.KeyValue) func() {
-	log := logger.FromContext(ctx)
-	if otelEp == "" {
-		log.Debug("tracing disabled")
-		return func() {}
-	}
-	log.Info(fmt.Sprintf("dialing otel-collector, %s..", otelEp))
-	exp, err := otelpgrpc.New(ctx,
-		otelpgrpc.WithInsecure(),
-		otelpgrpc.WithEndpoint(otelEp),
-		//otlpgrpc.WithDialOption(grpc.WithBlock()),
-	)
-	if err != nil {
-		log.Fatalln("dialing collector")
-	}
-
-	res, err := resource.New(ctx, resource.WithAttributes(svcAttr...))
-	if err != nil {
-		log.Fatalln("adding resource attributes")
-	}
-
-	bsp := sdktrace.NewBatchSpanProcessor(exp)
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(res),
-		sdktrace.WithSpanProcessor(bsp),
-	)
-	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp,
-		otelpyroscope.WithAppName(srvName),
-		otelpyroscope.WithPyroscopeURL("http://127.0.0.1:4040"),
-		otelpyroscope.WithRootSpanOnly(true),
-		otelpyroscope.WithAddSpanName(true),
-		otelpyroscope.WithProfileURL(true),
-		otelpyroscope.WithProfileBaselineURL(true),
-		//otelpyroscope.WithProfileBaselineLabels(map[string]string{"robin": "rovin"}),
-	))
-
-	// set global propagator to tracecontext (the default is no-op).
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-
-	log.Info("tracing running")
-
-	return func() {
-		tp.Shutdown(ctx)
-		if err != nil {
-			log.Fatalln("stopping provider")
-		}
-		exp.Shutdown(ctx)
-		if err != nil {
-			log.Fatalln("stopping exporter")
+			log.Error("stopping exporter")
 		}
 	}
 }

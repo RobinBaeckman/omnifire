@@ -13,25 +13,18 @@ type (
 )
 
 func New(ctx context.Context, cf *viper.Viper) (*logrus.Entry, context.Context) {
-	e := logrus.WithContext(ctx)
-	e = SetDefaultFields(cf, e)
+	log := logrus.New()
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.SetReportCaller(true)
+
+	e := log.
+		WithField("app", cf.GetString("server.name")).
+		WithField("version", "todo")
 	ctx = context.WithValue(ctx, loggerKey{}, e)
 	return e, ctx
 }
 
-func SetDefaultFields(cf *viper.Viper, e *logrus.Entry) *logrus.Entry {
-	e.Logger.SetFormatter(&logrus.JSONFormatter{})
-	e.Logger.SetReportCaller(true)
-
-	e = e.
-		WithField("app", cf.GetString("server.name")).
-		WithField("version", "todo")
-	return e
-}
-
 func Inject(ctx context.Context, e *logrus.Entry, cf *viper.Viper) context.Context {
-	e = SetDefaultFields(cf, e)
-
 	ctx = context.WithValue(ctx, loggerKey{}, e)
 	return ctx
 }

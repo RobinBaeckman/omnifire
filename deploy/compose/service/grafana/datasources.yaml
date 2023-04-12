@@ -16,10 +16,16 @@ datasources:
     jsonData:
       maxLines: 1000
       derivedFields:
-        - datasourceUid: tempo
-          matcherRegex: '"traceID":"(\w+)'
-          name: TraceID
+        - name: TraceID
+          datasourceUid: tempo
+          matcherRegex: '"trace-id":"(\w+)'
           url: '$${__value.raw}'
+        - name: 'profileID'
+          datasourceUid: pyroscope
+          #matcherRegex: "go_span_id=(\\w+)"
+          matcherRegex: '"profile_id":"(\w+)'
+          url: 'hopbox1.cpu{profile_id="$${__value.raw}"}'
+          #url: '$${__value.raw}'
 
   - name: Tempo
     type: tempo
@@ -46,3 +52,11 @@ datasources:
         enabled: true
       lokiSearch:
         datasourceUid: 'loki'
+
+  - name: Pyroscope
+    uid: pyroscope
+    type: pyroscope-datasource
+    access: proxy
+    orgId: 1
+    jsonData:
+      path: http://pyroscope:4040

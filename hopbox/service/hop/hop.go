@@ -7,21 +7,18 @@ import (
 
 	"omnifire/hopbox/storage"
 	hpb "omnifire/proto/hopbox"
-	"omnifire/util/logger"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
+	"omnifire/util/logger"
+	"omnifire/util/otel"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 func (s *Server) Hop(ctx context.Context, req *hpb.HopRequest) (*hpb.HopResponse, error) {
-	//log, span, ctx := otel.Start(ctx, "",
-	//otel.WithSpanOpts(trace.WithSpanKind(trace.SpanKindInternal)))
-	//defer span.End()
-
-	log := logger.FromContext(ctx)
-	ctx, span := otel.GetTracerProvider().Tracer("").Start(ctx, "FindNearestVehicle")
-	span.SetAttributes(attribute.String("vehicle", "bajs"))
+	ctx, span := otel.Start(ctx, "",
+		otel.WithSpanOpts(trace.WithSpanKind(trace.SpanKindInternal)))
 	defer span.End()
+	log := logger.FromContext(ctx)
 
 	sp, spd := s.shouldPersist(req)
 	if sp {

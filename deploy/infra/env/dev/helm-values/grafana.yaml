@@ -106,7 +106,7 @@ datasources:
               url: '$${__value.raw}'
       - name: Pyroscope
         uid: pyroscope
-k       type: pyroscope-datasource
+        type: pyroscope-datasource
         access: proxy
         orgId: 1
         jsonData:

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"omnifire/hopbox/storage"
 	hpb "omnifire/proto/hopbox"
+	"omnifire/util/logger"
 	"omnifire/util/otel"
 
 	"github.com/lib/pq"
@@ -12,7 +13,8 @@ import (
 )
 
 func (db *DB) CreateData(ctx context.Context, sd storage.Hop, req *hpb.HopRequest, srvName string, shouldLog, shouldError bool, ld string) (*storage.Hop, error) {
-	log, span, ctx := otel.Start(ctx, "",
+	log := logger.FromContext(ctx)
+	ctx, span := otel.Start(ctx, "",
 		otel.WithSpanOpts(trace.WithSpanKind(trace.SpanKindInternal)))
 	defer span.End()
 

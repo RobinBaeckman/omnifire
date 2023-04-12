@@ -95,8 +95,15 @@ services:
       - ./service/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
       - ./service/grafana/dashboards:/var/lib/grafana/dashboards
       - grafana-data:/var/lib/grafana
+    labels:
+      logging: "promtail"
     profiles:
       - observe
+    environment:
+      GF_LOG_LEVEL: debug
+      GF_INSTALL_PLUGINS: pyroscope-datasource,pyroscope-panel
+      #GF_DIAGNOSTICS_TRACING_ENABLED: true
+      #GF_DIAGNOSTICS_TRACING_FILE: /tmp/trace.out
 
   prometheus:
     container_name: prometheus
@@ -207,6 +214,8 @@ services:
 
   pyroscope:
     image: "pyroscope/pyroscope:0.37.2"
+    labels:
+      logging: "promtail"
     ports:
       - "4040:4040"
     command:
