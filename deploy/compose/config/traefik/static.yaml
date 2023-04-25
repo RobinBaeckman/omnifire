@@ -1,0 +1,64 @@
+global:
+  #checkNewVersion: true
+  sendAnonymousUsage: false
+
+#serversTransport:
+  #insecureSkipVerify: true
+  #rootCAs:
+    #- foobar
+    #- foobar
+  #maxIdleConnsPerHost: 42
+  #forwardingTimeouts:
+    #dialTimeout: 42s
+    #responseHeaderTimeout: 42s
+    #idleConnTimeout: 42s
+
+entryPoints:
+  web:
+    address: :80
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: :443
+  grpc:
+    address: :8090
+
+providers:
+  #providersThrottleDuration: 42s
+  docker:
+    #constraints: foobar
+    watch: true
+    #endpoint: foobar
+    #defaultRule: foobar
+    #tls:
+      #ca: foobar
+      #caOptional: true
+      #cert: foobar
+      #key: foobar
+      #insecureSkipVerify: true
+    exposedByDefault: false
+    #useBindPortIP: true
+    #swarmMode: true
+    #network: foobar
+    #swarmModeRefreshSeconds: 42s
+    #httpClientTimeout: 42s
+    #allowEmptyServices: true
+  file:
+    #directory: /etc/traefik/config.yaml
+    watch: true
+    filename: /etc/traefik/config.yaml
+    #debugLogGeneratedTemplate: true
+
+api:
+  #insecure: true
+  dashboard: true
+  debug: true
+
+log:
+  level: DEBUG
+  #filePath: foobar
+  #format: foobar

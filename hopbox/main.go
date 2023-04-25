@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -9,112 +10,130 @@ import (
 	hsvc "omnifire/hopbox/service/hop"
 	"omnifire/hopbox/storage/postgres"
 	hpb "omnifire/proto/hopbox"
+	"omnifire/util/config"
+	"omnifire/util/db"
 	"omnifire/util/logger"
 	"omnifire/util/mw"
+	"omnifire/util/prof"
 	"omnifire/util/srv"
-	"omnifire/util/viper"
 
 	"omnifire/util/otel"
 
-	vpr "github.com/spf13/viper"
-
-	"github.com/pyroscope-io/client/pyroscope"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.9.0"
-)
-
-const (
-	dockerEnv = "dev"
 )
 
 func main() {
-	cf := viper.New()
+	// setup config
+	cf := config.New()
+
+	// setup logger
 	log, ctx := logger.New(context.Background(), cf)
 	log.Logger.AddHook(&otel.LogHook{})
 
-	pf, err := pyroscope.Start(pyroscope.Config{
-		ApplicationName: cf.GetString("server.name"),
-		ServerAddress:   cf.GetString("profile.host"),
-		//Logger:          pyroscope.StandardLogger,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	// setup profiling
+	pf := prof.Start(ctx, cf)
 	defer func() {
 		if err := pf.Stop(); err != nil {
 			log.Error(err)
 		}
 	}()
 
-	attr := []attribute.KeyValue{
-		semconv.ServiceNameKey.String(cf.GetString("server.name")),
-		semconv.DeploymentEnvironmentKey.String(cf.GetString("runtime.env")),
-		semconv.ServiceVersionKey.String("todo"),
-		attribute.String("app", cf.GetString("server.name")),
-	}
-	if cf.GetString("runtime.env") == dockerEnv {
-		attr = append(attr, attribute.String("container", cf.GetString("server.name")))
-	}
-	shutdown := otel.NewTracer(
-		ctx,
-		cf.GetString("server.name"),
-		cf.GetString("trace.collectorHost"),
-		cf.GetString("profile.host"),
-		attr...,
-	)
+	// setup tracing
+	shutdown := otel.NewTracer(ctx, cf)
 	defer shutdown()
 
-	db := postgres.New(ctx, cf)
-	defer db.Close()
-	db.MigrateUp(ctx, cf)
+	// setup db
+	st := postgres.New(ctx, cf)
+	defer st.Close()
 
-	s := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			otelgrpc.UnaryServerInterceptor(),
-			mw.LoggerInterceptor(cf, log),
-		),
-	)
+	// migrate db
+	db.MigrateUp(ctx, cf, st.DB)
 
-	conns := newConns(ctx, cf)
-	hcl := hpb.NewHopboxClient(conns.HopConn)
-
-	hsvc.RegisterServer(s, db, hcl, hsvc.NewConfig(ctx, cf))
+	// start grpc server
+	errChan := make(chan error)
 	go func() {
-		log.Fatalln(s.Serve(srv.Listen("tcp", ":"+cf.GetString("server.grpcPort"))))
+		errChan <- startGRPCServer(ctx, cf, st)
 	}()
-	log.Infoln("serving gRPC on 0.0.0.0:" + cf.GetString("server.grpcPort"))
 
-	gwServer := hsvc.RegisterGateway(
-		ctx,
-		srv.GRPCClientConn(
-			ctx,
-			":"+cf.GetString("server.grpcPort"),
-		),
-		":"+cf.GetString("server.httpPort"),
-	)
-	log.Infoln("serving gRPC-Gateway on http://0.0.0.0:" + cf.GetString("server.httpPort"))
-	log.Fatalln(gwServer.ListenAndServe())
+	// start http server
+	go func() {
+		errChan <- startGRPCGatewayServer(ctx, cf)
+	}()
+
+	for err := range errChan {
+		if err != nil {
+			log.Fatalf("Error occurred: %v", err)
+		}
+	}
 }
 
 type conns struct {
 	HopConn *grpc.ClientConn
 }
 
-func newConns(ctx context.Context, cf *vpr.Viper) *conns {
+func newConns(ctx context.Context, cf *config.Config) *conns {
 	log := logger.FromContext(ctx)
 	conn := &grpc.ClientConn{}
-	nextHop := cf.GetString("nexthop.addr")
+	nextHop := cf.NextHop.Host
+
+	var opt []grpc.DialOption
+	opt = append(opt,
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+	)
+	opt = append(opt, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if nextHop != "" {
 		var err error
 		log.Info("dialing hopbox: ", nextHop)
 		conn, err = grpc.Dial(nextHop,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+			opt...,
 		)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 	return &conns{HopConn: conn}
+}
+
+func startGRPCServer(ctx context.Context, cf *config.Config, st *postgres.DB) error {
+	log := logger.FromContext(ctx)
+
+	var opt []grpc.ServerOption
+	opt = append(opt, grpc.ChainUnaryInterceptor(
+		otelgrpc.UnaryServerInterceptor(),
+		mw.LoggerInterceptor(log),
+	))
+	s := grpc.NewServer(
+		opt...,
+	)
+
+	conns := newConns(ctx, cf)
+	hcl := hpb.NewHopboxClient(conns.HopConn)
+
+	hsvc.RegisterServer(s, st, hcl, hsvc.NewConfig(ctx, cf))
+	log.Infoln("serving gRPC on 0.0.0.0:" + cf.Server.GrpcPort)
+	return s.Serve(srv.Listen("tcp", ":"+cf.Server.GrpcPort))
+}
+
+func startGRPCGatewayServer(ctx context.Context, cf *config.Config) error {
+	log := logger.FromContext(ctx)
+
+	fmt.Println("################17")
+	conn, err := grpc.DialContext(
+		ctx,
+		cf.Server.Name+":"+cf.Server.GrpcPort,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("################18")
+
+	gwServer := hsvc.RegisterGateway(
+		ctx,
+		conn,
+		":"+cf.Server.HttpPort,
+	)
+	log.Infoln("serving gRPC-Gateway on http://0.0.0.0:" + cf.Server.HttpPort)
+	return gwServer.ListenAndServe()
 }

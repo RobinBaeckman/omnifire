@@ -11,7 +11,7 @@ nameSuffix: "2"
 images:
 - name: robinbaeckman/hopbox
   newName: robinbaeckman/hopbox
-  newTag: 6fd4347041480814c96f
+  newTag: c762ba71bf62c3e493f7
 
 commonLabels:
   app.kubernetes.io/instance: hopbox2

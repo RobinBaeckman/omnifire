@@ -3,28 +3,28 @@ package logger
 import (
 	"context"
 	"log"
+	"omnifire/util/config"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 type (
 	loggerKey struct{}
 )
 
-func New(ctx context.Context, cf *viper.Viper) (*logrus.Entry, context.Context) {
+func New(ctx context.Context, cf *config.Config) (*logrus.Entry, context.Context) {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetReportCaller(true)
 
 	e := log.
-		WithField("app", cf.GetString("server.name")).
+		WithField("app", cf.Server.Name).
 		WithField("version", "todo")
 	ctx = context.WithValue(ctx, loggerKey{}, e)
 	return e, ctx
 }
 
-func Inject(ctx context.Context, e *logrus.Entry, cf *viper.Viper) context.Context {
+func Inject(ctx context.Context, e *logrus.Entry) context.Context {
 	ctx = context.WithValue(ctx, loggerKey{}, e)
 	return ctx
 }

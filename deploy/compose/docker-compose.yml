@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 volumes:
   omnifire-postgresql:
@@ -32,24 +32,42 @@ services:
       dockerfile: deploy/compose/Dockerfile.hopbox
     labels:
       logging: "promtail"
-    ports:
-      - 9000:8080
-      - 9010:8090
+    labels:
+      traefik.enable: true
+      traefik.http.routers.hopbox1-http.tls: true
+      traefik.http.routers.hopbox1-http.tls.options: require-mtls@file
+      traefik.http.routers.hopbox1-http.rule: Host(`hopbox1.local.dev`)
+      traefik.http.routers.hopbox1-http.entrypoints: websecure
+      traefik.http.routers.hopbox1-http.service: hopbox1-http
+      traefik.http.services.hopbox1-http.loadbalancer.server.port: 80
+
+      traefik.http.routers.hopbox1-grpc.rule: Host(`hopbox1.local.dev`)
+      traefik.http.routers.hopbox1-grpc.entrypoints: grpc
+      traefik.http.routers.hopbox1-grpc.service: hopbox1-grpc
+      traefik.http.services.hopbox1-grpc.loadbalancer.server.port: 8090
+      traefik.http.services.hopbox1-grpc.loadbalancer.server.scheme: h2c
     environment:
       RUNTIME_ENV: "dev"
       SERVER_NAME: "hopbox1"
-      SERVER_GRPCPORT: "8080"
-      SERVER_HTTPPORT: "8090"
+      SERVER_GRPCPORT: "8090"
+      SERVER_HTTPPORT: "80"
       DATABASE_USER: "postgres"
       DATABASE_PASSWORD: "secret"
       DATABASE_DBNAME: "hopbox1"
       DATABASE_HOST: "postgres"
       DATABASE_SSLMODE: "disable"
       DATABASE_MIGRATIONPATH: "file://storage/migration"
-      LOCAL_CONTAINERNAME: "hopbox1"
       TRACE_COLLECTORHOST: "otel-col:4317"
-      NEXTHOP_ADDR: "hopbox2:8080"
+      NEXTHOP_HOST: "hopbox2:8090"
       PROFILE_HOST: "http://pyroscope:4040"
+      #TLS_ENABLED: "true"
+      #TLS_SERVERCRT: "cert/hopbox1.server.crt"
+      #TLS_SERVERKEY: "cert/hopbox1.server.key"
+      #TLS_CLIENTCRT: "cert/hopbox1.client.crt"
+      #TLS_CLIENTKEY: "cert/hopbox1.client.key"
+      #TLS_CACRT: "cert/ca.crt"
+      #GRPC_GO_LOG_SEVERITY_LEVEL: info
+      #GRPC_GO_LOG_VERBOSITY_LEVEL: '99'
     restart: unless-stopped
 
   hopbox2:
@@ -61,25 +79,72 @@ services:
       dockerfile: deploy/compose/Dockerfile.hopbox
     labels:
       logging: "promtail"
-    ports:
-      - 9020:8080
-      - 9030:8090
+    labels:
+      traefik.enable: true
+      traefik.http.routers.hopbox2-http.tls: true
+      traefik.http.routers.hopbox1-http.tls.options: require-mtls@file
+      traefik.http.routers.hopbox2-http.rule: Host(`hopbox2.local.dev`)
+      traefik.http.routers.hopbox2-http.entrypoints: websecure
+      traefik.http.routers.hopbox2-http.service: hopbox2-http
+      traefik.http.services.hopbox2-http.loadbalancer.server.port: 80
+
+      traefik.http.routers.hopbox2-grpc.rule: Host(`hopbox2.local.dev`)
+      traefik.http.routers.hopbox2-grpc.entrypoints: grpc
+      traefik.http.routers.hopbox2-grpc.service: hopbox2-grpc
+      traefik.http.services.hopbox2-grpc.loadbalancer.server.port: 8090
+      traefik.http.services.hopbox2-grpc.loadbalancer.server.scheme: h2c
     environment:
       RUNTIME_ENV: "dev"
       SERVER_NAME: "hopbox2"
-      SERVER_GRPCPORT: "8080"
-      SERVER_HTTPPORT: "8090"
+      SERVER_GRPCPORT: "8090"
+      SERVER_HTTPPORT: "80"
       DATABASE_USER: "postgres"
       DATABASE_PASSWORD: "secret"
       DATABASE_DBNAME: "hopbox2"
       DATABASE_HOST: "postgres"
       DATABASE_SSLMODE: "disable"
       DATABASE_MIGRATIONPATH: "file://storage/migration"
-      LOCAL_CONTAINERNAME: "hopbox1"
       TRACE_COLLECTORHOST: "otel-col:4317"
-      NEXTHOP_ADDR: ""
+      NEXTHOP_HOST: ""
       PROFILE_HOST: "http://pyroscope:4040"
+      #TLS_ENABLED: "true"
+      #TLS_SERVERCRT: "cert/hopbox2.server.crt"
+      #TLS_SERVERKEY: "cert/hopbox2.server.key"
+      #TLS_CLIENTCRT: "cert/hopbox2.client.crt"
+      #TLS_CLIENTKEY: "cert/hopbox2.client.key"
+      #TLS_CACRT: "cert/ca.crt"
+      #GRPC_GO_LOG_SEVERITY_LEVEL: info
+      #GRPC_GO_LOG_VERBOSITY_LEVEL: '99'
     restart: unless-stopped
+
+  traefik:
+    container_name: traefik
+    image: traefik:v3.0
+    labels:
+      logging: "promtail"
+    labels:
+      traefik.enable: true
+      traefik.http.routers.dashboard-http.entrypoints: web
+      traefik.http.routers.dashboard-http.rule: Host(`traefik.local.dev`)
+      traefik.http.routers.dashboard-http.service: api@internal
+      traefik.http.routers.dashboard.entrypoints: websecure
+      traefik.http.routers.dashboard.rule: Host(`traefik.local.dev`)
+      traefik.http.routers.dashboard.tls: true
+      # enable to use letsencrypt, needs dns
+      #traefik.http.routers.dashboard.tls.certresolver: staging
+      traefik.http.routers.dashboard.service: api@internal
+    ports:
+      # http
+      - "80:80"
+      # https
+      - "443:443"
+      # grpc
+      - "8090:8090"
+    volumes:
+      - ./config/traefik/static.yaml:/etc/traefik/traefik.yaml
+      - ./config/traefik/dynamic.yaml:/etc/traefik/config.yaml
+      - ../../hopbox/certs:/certs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 # -- Monitoring --#
   grafana:
@@ -91,9 +156,9 @@ services:
       - 4000:3000
     restart: unless-stopped
     volumes:
-      - ./service/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
-      - ./service/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
-      - ./service/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./config/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./config/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
       - grafana-data:/var/lib/grafana
     labels:
       logging: "promtail"
@@ -112,7 +177,7 @@ services:
     labels:
       logging: "promtail"
     volumes:
-      - ./service/prometheus/config.yaml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus/config.yaml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -149,7 +214,7 @@ services:
       - /etc/machine-id:/etc/machine-id:ro
       - /var/run/docker.sock:/var/run/docker.sock:rw
     ports:
-    - '8080:8080'
+    - '9000:8080'
     profiles:
       - observe
 
@@ -174,7 +239,7 @@ services:
       - /var/log:/var/log
     command: -config.file=/etc/promtail/docker-config.yaml
     volumes:
-      - ./service/promtail/config.yaml:/etc/promtail/docker-config.yaml
+      - ./config/promtail/config.yaml:/etc/promtail/docker-config.yaml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
     profiles:
@@ -203,7 +268,7 @@ services:
     labels:
       logging: "promtail"
     volumes:
-      - ./service/otel/config.yaml:/etc/otelcol-config.yaml
+      - ./config/otel/config.yaml:/etc/otelcol-config.yaml
     ports:
       - "4317"          # OTLP over gRPC receiver
       - "4318:4318"     # OTLP over HTTP receiver

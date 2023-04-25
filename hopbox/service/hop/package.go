@@ -2,14 +2,15 @@ package hop
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"omnifire/hopbox/storage/postgres"
 	hpb "omnifire/proto/hopbox"
+	cf "omnifire/util/config"
 	"omnifire/util/logger"
 	"strconv"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
@@ -26,17 +27,17 @@ type config struct {
 	hopNo   int
 }
 
-func NewConfig(ctx context.Context, cf *viper.Viper) config {
+func NewConfig(ctx context.Context, cf *cf.Config) config {
 	log := logger.FromContext(ctx)
-	sn := cf.GetString("server.name")
+	sn := cf.Server.Name
 	hopNo, err := strconv.Atoi(sn[len(sn)-1:])
 	if err != nil {
 		log.Fatal(err)
 	}
 	return config{
 		hopNo:   hopNo,
-		srvName: cf.GetString("server.name"),
-		nextHop: cf.GetString("nexthop.addr") != "",
+		srvName: cf.Server.Name,
+		nextHop: cf.NextHop.Host != "",
 	}
 }
 
@@ -47,9 +48,11 @@ func RegisterServer(s grpc.ServiceRegistrar, db *postgres.DB, cl hpb.HopboxClien
 func RegisterGateway(ctx context.Context, conn *grpc.ClientConn, addr string) *http.Server {
 	log := logger.FromContext(ctx)
 	gwmux := runtime.NewServeMux()
+	fmt.Println("################19")
 	if err := hpb.RegisterHopboxHandler(ctx, gwmux, conn); err != nil {
 		log.Fatalln("failed to register gateway:", err)
 	}
+	fmt.Println("################20")
 	return &http.Server{
 		Addr:    addr,
 		Handler: gwmux,

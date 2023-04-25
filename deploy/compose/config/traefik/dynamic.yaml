@@ -1,0 +1,30 @@
+#http:
+  #serversTransports:
+    #hopbox1:
+      #serverName: "hopbox1.local.dev"
+      #certificates:
+        #- certFile: /certs/hopbox1-cert.pem
+          #keyFile: /certs/hopbox1-key.pem
+    #hopbox2:
+      #serverName: "hopbox2.local.dev"
+      #certificates:
+        #- certFile: /certs/hopbox2-cert.pem
+          #keyFile: /certs/hopbox2-key.pem
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/proxy-cert.pem
+        keyFile: /certs/proxy-key.pem
+  #certificates:
+    #- certFile: certs/server-cert.pem
+      #keyFile: certs/server-key.pem
+  options:
+    default:
+      minVersion: VersionTLS12
+    require-mtls:
+      clientAuth:
+        clientAuthType: RequireAndVerifyClientCert
+        caFiles:
+          - /certs/ca-cert.pem
+      minVersion: VersionTLS12

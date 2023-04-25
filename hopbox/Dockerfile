@@ -7,5 +7,6 @@ WORKDIR /root/
 COPY hopbox hopbox
 COPY storage/migration storage/migration
 COPY env/sample.config env/config
+COPY cert cert
 
 ENTRYPOINT ["sh", "-c", "./hopbox"]

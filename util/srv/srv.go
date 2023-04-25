@@ -22,7 +22,6 @@ func GRPCClientConn(ctx context.Context, addr string) *grpc.ClientConn {
 	conn, err := grpc.DialContext(
 		ctx,
 		addr,
-		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
